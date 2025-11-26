@@ -162,3 +162,8 @@ cython_debug/
 #.idea/
 data/*
 results/*
+
+# Demo cache and temporary files
+app/backend/.uvicorn_cache/
+app/frontend/static/.cache/
+CLAUDE.md

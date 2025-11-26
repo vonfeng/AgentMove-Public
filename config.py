@@ -1,8 +1,25 @@
 
 import os
+from pathlib import Path
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    env_path = Path(__file__).parent / '.env'
+    load_dotenv(dotenv_path=env_path)
+    print(f"Loaded environment variables from {env_path}")
+except ImportError:
+    print("python-dotenv not installed. Using system environment variables only.")
+    print("Install it with: pip install python-dotenv")
+except Exception as e:
+    print(f"Failed to load .env file: {e}")
 
 # 其他配置
-PROXY = "http://127.0.0.1:10190" # you should prepare your proxy server
+# Proxy configuration (optional, leave empty if not using proxy)
+PROXY = os.environ.get("PROXY", "")  # Default: no proxy
+if not PROXY:
+    PROXY = None  # Set to None if empty string
+
 # EXP_CITIES = ['Tokyo', 'Nairobi', 'NewYork', 'Sydney', 'CapeTown', 'Paris', 'Beijing', 'Mumbai', 'SanFrancisco', 'London', 'SaoPaulo', 'Moscow']
 # EXP_CITIES = ["Beijing"] # use it for quickly start
 EXP_CITIES = ["Shanghai"] # for WWW2019
@@ -12,13 +29,14 @@ DATASET = 'TIST2015' # format which used by TIST2015 and WWW2019
 
 # Original Data
 DATA_PATH = "data/"
-TIST2015_DATA_DIR = "{}dataset_tist2015".format(DATA_PATH)       
-TSMC2014_DATA_DIR = "{}dataset_tsmc2015".format(DATA_PATH)       
-GOWALLA_DATA_DIR = "{}dataset_gowalla".format(DATA_PATH)         
-WWW2019_DATA_DIR = "{}dataset_www2019".format(DATA_PATH)         
+TIST2015_DATA_DIR = "{}dataset_tist2015".format(DATA_PATH)
+TSMC2014_DATA_DIR = "{}dataset_tsmc2015".format(DATA_PATH)
+GOWALLA_DATA_DIR = "{}dataset_gowalla".format(DATA_PATH)
+WWW2019_DATA_DIR = "{}dataset_www2019".format(DATA_PATH)
 
 # Temp Data, used for location address matching
-NOMINATIM_DEPLOY_SERVER = os.environ["nominatim_deploy_server_address"] # IP: PORT e.g., 127.0.0.1:18081
+# IP: PORT e.g., 127.0.0.1:8080
+NOMINATIM_DEPLOY_SERVER = os.environ.get("nominatim_deploy_server_address", "127.0.0.1:8080")
 NOMINATIM_DEPLOY_WORKERS = 20 # Number of parallel workers for address matching
 
 NO_ADDRESS_TRAJ_DIR = "data/input_trajectories/"  # Trajectory data without addresses after city division from Foursquare, input data for fsq_address_deploy, output data from process_city_data

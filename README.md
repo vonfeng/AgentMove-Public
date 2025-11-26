@@ -42,30 +42,49 @@ Extensive experiments utilizing mobility data from two distinct sources reveal t
 
 # 💡 Running Experiments
 
-## LLM API Key
-Configure the relevant API keys in `.bashrc`, then execute `source .bashrc`:
+## Configuration
+
+### Environment Setup
+
+AgentMove uses a `.env` file for configuration. This is more convenient than modifying `.bashrc`:
 
 ```bash
-# Provide free tokens for many 7B models
-export SiliconFlow_API_KEY="xx"
+# 1. Copy the example configuration file
+cp .env.example .env
 
-# The following APIs may require a proxy
-export DeepInfra_API_KEY="xx"
-export OpenAI_API_KEY="xx"
-export OpenRouter_API_KEY="xx"
+# 2. Edit .env and add your API keys
+nano .env  # or use any text editor
+```
 
-# You can also deploy the model locally via vLLM
-export vllm_KEY="xx"
+Required environment variables in `.env`:
 
-# Set Nominatim server address if you deploy it locally
-export nominatim_deploy_server_address="IP:Port"
+```bash
+# LLM API Keys (at least one is required)
+SiliconFlow_API_KEY=your_key_here      # Free tokens for 7B models
+DeepInfra_API_KEY=your_key_here        # For Llama, Gemma, Mistral
+OpenAI_API_KEY=your_key_here           # For GPT models
+OpenRouter_API_KEY=your_key_here       # Alternative API
+vllm_KEY=EMPTY                         # For local vLLM deployment
+
+# Address Resolution (required for data preprocessing)
+nominatim_deploy_server_address=127.0.0.1:8080
+
+# Optional: Proxy configuration
+PROXY=http://your_proxy:port          # Leave empty if not needed
+```
+
+**Alternative**: You can still use environment variables directly:
+```bash
+export SiliconFlow_API_KEY="your_key"
+export nominatim_deploy_server_address="127.0.0.1:8080"
+# ... etc
 ```
 
 We define the list of supported models in `models/llm_api.py`. You can add new models or platforms by modifying this file.
 
 ## Installation
 ```bash
-git clone https://github.com/tsinghua-fib-lab/AgentMove.git  
+git clone https://github.com/tsinghua-fib-lab/AgentMove.git
 
 cd AgentMove
 
@@ -146,6 +165,34 @@ python -m evaluate.analysis --eval_path="results/$exp_name/$city_name/agentmove/
 ./run_fsq.sh
 ./run_isp.sh
 ```
+
+## 🌐 Web Demo
+
+We provide an interactive web-based demo for visualizing predictions and exploring the AgentMove framework.
+
+### Quick Start
+
+```bash
+# Install demo dependencies
+pip install -r app/requirements.txt
+
+# Start the demo server
+bash app/start_demo.sh
+```
+
+Then open your browser and visit:
+- **Web Interface**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/api/docs
+
+### Features
+
+- 🗺️ **Interactive Map Visualization**: View trajectories and predictions on an interactive map
+- 🤖 **Multi-Model Support**: Test different LLM models (Qwen, Llama, GLM, DeepSeek, etc.)
+- 📊 **Real-time Predictions**: Visualize prediction results in real-time
+- 🧠 **Module Transparency**: Inspect outputs from Personal Memory, Spatial World, and Social World modules
+- 🎯 **Multiple Methods**: Compare AgentMove with baseline methods
+
+For detailed documentation, see [app/README.md](app/README.md).
 
 # 🔧 Debugging Tips
 1. If you encounter any exceptions, you can try relaxing the try-except control in the code to help with debugging.

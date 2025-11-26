@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentMove Demo - 基于LLM的零样本位置预测</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>🤖 AgentMove Demo</h1>
+                <p class="subtitle">基于大语言模型的零样本下一位置预测 (NAACL 2025)</p>
+            </div>
+            <div class="header-status">
+                <span id="status-indicator" class="status-indicator">⚪ 连接中...</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Left Panel: Map -->
+            <div class="map-panel">
+                <div id="map" class="map-container"></div>
+                <div class="map-legend">
+                    <h4>图例</h4>
+                    <div class="legend-item">
+                        <span class="legend-marker" style="background: #3388ff;">🔵</span>
+                        <span>历史轨迹点</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-marker" style="background: #ff3333;">🔴</span>
+                        <span>预测位置</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-marker" style="background: #33ff33;">🟢</span>
+                        <span>真实位置</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Controls and Results -->
+            <div class="control-panel">
+                <!-- Configuration Section -->
+                <div class="panel-section">
+                    <h3>⚙️ 配置</h3>
+
+                    <div class="form-group">
+                        <label for="city-select">城市</label>
+                        <select id="city-select" class="form-control">
+                            <option value="Shanghai">上海 (Shanghai)</option>
+                            <option value="Beijing">北京 (Beijing)</option>
+                            <option value="Tokyo">东京 (Tokyo)</option>
+                            <option value="NewYork">纽约 (NewYork)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="model-select">LLM 模型</label>
+                        <select id="model-select" class="form-control">
+                            <optgroup label="SiliconFlow (免费)">
+                                <option value="qwen2.5-7b" selected>Qwen 2.5-7B</option>
+                                <option value="qwen2.5-72b">Qwen 2.5-72B</option>
+                                <option value="glm4-9b">GLM-4-9B</option>
+                                <option value="deepseekv2">DeepSeek V2</option>
+                            </optgroup>
+                            <optgroup label="DeepInfra">
+                                <option value="llama4-17b">Llama 4-17B</option>
+                                <option value="llama3.1-8b">Llama 3.1-8B</option>
+                                <option value="gemma2-9b">Gemma 2-9B</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prompt-select">预测方法</label>
+                        <select id="prompt-select" class="form-control">
+                            <option value="agent_move_v6">AgentMove (完整框架)</option>
+                            <option value="llmmove">LLM-Move Baseline</option>
+                            <option value="llmzs">LLM-ZS Baseline</option>
+                            <option value="llmmob">LLM-Mob Baseline</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Trajectory Selection -->
+                <div class="panel-section">
+                    <h3>📍 轨迹选择</h3>
+
+                    <div class="form-group">
+                        <label for="trajectory-select">选择轨迹</label>
+                        <select id="trajectory-select" class="form-control">
+                            <option value="">加载中...</option>
+                        </select>
+                        <small class="form-hint">或者选择随机轨迹进行预测</small>
+                    </div>
+
+                    <div class="button-group">
+                        <button id="load-trajectory-btn" class="btn btn-secondary">
+                            查看轨迹
+                        </button>
+                        <button id="random-trajectory-btn" class="btn btn-secondary">
+                            随机选择
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="panel-section">
+                    <h3>🚀 操作</h3>
+
+                    <button id="predict-btn" class="btn btn-primary btn-large">
+                        开始预测
+                    </button>
+
+                    <button id="example-btn" class="btn btn-secondary">
+                        加载示例
+                    </button>
+                </div>
+
+                <!-- Results Section -->
+                <div id="results-section" class="panel-section" style="display: none;">
+                    <h3>📊 预测结果</h3>
+
+                    <div class="result-card">
+                        <div class="result-header">
+                            <span class="result-label">预测位置 ID:</span>
+                            <span id="prediction-venue" class="result-value">-</span>
+                        </div>
+                        <div class="result-header">
+                            <span class="result-label">真实位置 ID:</span>
+                            <span id="ground-truth-venue" class="result-value">-</span>
+                        </div>
+                        <div class="result-match" id="prediction-match"></div>
+                    </div>
+
+                    <div class="result-explanation">
+                        <h4>推理过程</h4>
+                        <p id="prediction-reason" class="reasoning-text"></p>
+                    </div>
+
+                    <!-- Module Details (Collapsible) -->
+                    <details class="module-details">
+                        <summary>🔍 模块详情</summary>
+                        <div class="module-content">
+                            <div class="module-section">
+                                <h5>🧠 个人记忆模块</h5>
+                                <pre id="memory-output" class="module-output"></pre>
+                            </div>
+                            <div class="module-section">
+                                <h5>🌍 空间世界模型</h5>
+                                <pre id="spatial-output" class="module-output"></pre>
+                            </div>
+                            <div class="module-section">
+                                <h5>👥 社会知识模块</h5>
+                                <pre id="social-output" class="module-output"></pre>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- Loading Indicator -->
+                <div id="loading-indicator" class="loading-indicator" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>预测中，请稍候...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>AgentMove: A Large Language Model based Agentic Framework for Zero-shot Next Location Prediction</p>
+            <p>
+                <a href="https://arxiv.org/abs/2408.13986" target="_blank">📄 论文</a> |
+                <a href="https://github.com/tsinghua-fib-lab/AgentMove" target="_blank">💻 GitHub</a> |
+                <a href="/api/docs" target="_blank">📚 API 文档</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Custom JS -->
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
