@@ -53,7 +53,7 @@ def load_cat(data_path, data_name = "poi.txt"):
     kdtree_cat = KDTree(vid_array)
     return vid_list, vid_lookup, kdtree_cat  #dist, ind = kdtree.query([(lat, lon)], k=1) bid = vid_lookup[ind[0][0] + 1][0]
 
-def load_data_match_sparse_cat(data_path, data_name, sample_users):
+def load_data_match_sparse_cat(data_path, data_name, sample_users, compress=True):
     vid_list, vid_lookup, kdtree_cat = load_cat(data_path)
     #######################
     # default settings
@@ -111,7 +111,7 @@ def load_data_match_sparse_cat(data_path, data_name, sample_users):
     for user, sessions in data.items():
         for _, session in sessions.items():
             for si, traj_points in session.items():
-                if COMPRESS:
+                if compress:
                     traj_points = dense_session_compress(traj_points)
                 for traj_point in traj_points:
                     real_time = (traj_point[0]*24 + traj_point[2])*3600+start_time
@@ -167,7 +167,7 @@ def dense_session_compress(original_trace):
     return compress_trace
 
 
-def load_data_match_cat_telecom(data_path, data_name, sample_users=None):
+def load_data_match_cat_telecom(data_path, data_name, sample_users=None, compress=True):
     ##################
     filter_short_session = 3
     sessions_count_min = 3
@@ -227,7 +227,7 @@ def load_data_match_cat_telecom(data_path, data_name, sample_users=None):
     for user, sessions in data.items():
         for _, session in sessions.items():
             for si, traj_points in session.items():
-                if COMPRESS:
+                if compress:
                     traj_points = dense_session_compress(traj_points)
                 for traj_point in traj_points:
                     real_time = (traj_point[0]*24 + traj_point[2])*3600+start_time
@@ -237,10 +237,10 @@ def load_data_match_cat_telecom(data_path, data_name, sample_users=None):
     return result
 
 if __name__ == '__main__':
-    COMPRESS = True
+    compress = True
     sample_users = samples_generator(WWW2019_DATA_DIR, "weibo", threshold=2000)
-    data_dense_cat = load_data_match_cat_telecom(WWW2019_DATA_DIR, 'isp', sample_users=sample_users)
-    data_sparse_cat =  load_data_match_sparse_cat(WWW2019_DATA_DIR, 'weibo', sample_users=sample_users)
+    data_dense_cat = load_data_match_cat_telecom(WWW2019_DATA_DIR, 'isp', sample_users=sample_users, compress=compress)
+    data_sparse_cat = load_data_match_sparse_cat(WWW2019_DATA_DIR, 'weibo', sample_users=sample_users, compress=compress)
 
     os.makedirs(NO_ADDRESS_TRAJ_DIR, exist_ok=True)
     data_dense_cat.to_csv(os.path.join(NO_ADDRESS_TRAJ_DIR, "Shanghai_filtered.csv"), index=False)

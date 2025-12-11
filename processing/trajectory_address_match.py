@@ -25,8 +25,8 @@ def get_response(address):
     prompt_text = "You are a helpful assistant for Address Parsing.\n" + address + """Please get the Administrative Area Name, subdistrict name/neighbourhood name,access road or feeder road name, building name/POI name. \nPresent your answer in a JSON object with:'administrative' (the Administrative Area Name) ,'subdistrict' (subdistrict name/neighbourhood name),'poi'(building name/POI name),'street'(access road or feeder road name which POI/building is on). \nDo not include the key if information is not given.Do not output other content."""
     try:
         full_text = llm_client.get_response(prompt_text)
-    except:
-        raise Exception
+    except Exception as e:
+        raise RuntimeError(f"LLM API call failed: {e}") from e
     return full_text
 
 def process_address(city, venue, address, venue_category_name=None):

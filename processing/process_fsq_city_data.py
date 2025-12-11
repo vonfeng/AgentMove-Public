@@ -1,9 +1,9 @@
 import json
-import pandas as pd
-import tqdm
-import json
-import torch
 import os
+
+import pandas as pd
+import torch
+import tqdm
 
 DEVICE = 'cpu'
 from config import DATASET, TIST2015_DATA_DIR, GOWALLA_DATA_DIR, NO_ADDRESS_TRAJ_DIR, EXP_CITIES

@@ -55,7 +55,8 @@ if __name__ == '__main__':
     q = Queue()
     running = True
     
-    thread = threading.Thread(target=save_worker, daemon=True).start()
+    thread = threading.Thread(target=save_worker, daemon=True)
+    thread.start()
     
     venue_map = {}
     cities = []

@@ -1,9 +1,9 @@
-import json
-import httpx
 import ast
-import os
 import json
+import os
 import re
+
+import httpx
 import argparse
 import numpy as np
 import pandas as pd
@@ -99,23 +99,23 @@ class PredictionEvaluator:
                         if use_int_venue:
                             try:
                                 prediction_values.extend([int(p) for p in predictions['prediction']])
-                            except:
+                            except (ValueError, TypeError, AttributeError):
                                 prediction_values.extend([])
                         else:
                             try:
                                 prediction_values.extend([p.lower() for p in predictions['prediction'] if isinstance(p, str)])
-                            except:
+                            except (ValueError, TypeError, AttributeError):
                                 prediction_values.extend([])
                 else:
                     if use_int_venue:
                         try:
                             prediction_values.extend([int(p) for p in predictions['prediction']])
-                        except:
+                        except (ValueError, TypeError, AttributeError):
                             prediction_values.extend([])
                     else:
                         try:
                             prediction_values.extend([p.lower() for p in predictions['prediction'] if isinstance(p, str)])
-                        except:
+                        except (ValueError, TypeError, AttributeError):
                             prediction_values.extend([])
             else:
                 try:
@@ -128,7 +128,7 @@ class PredictionEvaluator:
                         venue_ids = re.findall(r'\"([0-9a-f]{24})\"', predictions['prediction'])
                         self.combined_data[key]['prediction'] = venue_ids
                         prediction_values.extend([p.lower() for p in venue_ids if isinstance(p, str)])
-                except:
+                except (ValueError, TypeError, AttributeError, KeyError):
                     self.combined_data[key]['prediction'] = None
                     prediction_values.extend([])
 
@@ -141,7 +141,7 @@ class PredictionEvaluator:
             if isinstance(predictions['prediction'],list):
                 try:
                     prediction_values.extend([int(p) for p in predictions['prediction']])
-                except:
+                except (ValueError, TypeError):
                     prediction_values.extend([])
             return prediction_values
 

@@ -186,7 +186,7 @@ class Agents:
             for traj in tqdm.tqdm(self.trajectories):
                 user_id, cur_context_stays = self.single_prediction(traj, stay_points, None)
                 self.known_stays[user_id].extend(cur_context_stays)
-        elif args.sample_one_traj_of_user:
+        elif self.sample_one_traj_of_user:
             with multiprocessing.Pool(self.workers) as pool:
                 res = pool.starmap(self.single_prediction, [(traj, stay_points, None) for traj in self.trajectories])
         else:
@@ -219,7 +219,7 @@ class Agents:
             return (user_id, traj_seqs.get('context_stays', []))
 
         # spatial world model
-        spaital_world = SpatialWorld(
+        spatial_world = SpatialWorld(
             model_name=self.model_name,
             platform=self.platform,
             city_name=self.city_name,
@@ -247,7 +247,7 @@ class Agents:
             city_name = self.city_name,
             platform=self.platform,
             model_name=self.model_name,
-            spatial_world=spaital_world,
+            spatial_world=spatial_world,
             social_world=self.social_world,
             memory_unit=memory_unit,
             prompt_type=self.prompt_type,

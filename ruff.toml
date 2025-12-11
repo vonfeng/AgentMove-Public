@@ -1,0 +1,77 @@
+# Ruff configuration for AgentMove
+# https://docs.astral.sh/ruff/configuration/
+
+# Target Python 3.10+
+target-version = "py310"
+
+# Line length
+line-length = 100
+
+# Exclude paths
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "*.egg-info",
+    "build",
+    "dist",
+    "baselines",  # Third-party baselines
+]
+
+[lint]
+# Enable rule categories
+select = [
+    "E",      # pycodestyle errors
+    "F",      # Pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "W",      # pycodestyle warnings
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+    "TCH",    # flake8-type-checking
+    "RUF",    # Ruff-specific rules
+]
+
+# Ignore specific rules
+ignore = [
+    "E501",   # Line too long (handled by formatter)
+    "B008",   # Function call in default argument (common in FastAPI)
+    "N806",   # Variable in function should be lowercase (pandas DataFrames)
+    "N803",   # Argument name should be lowercase
+    "SIM108", # Use ternary operator (can reduce readability)
+]
+
+# Per-file ignores
+[lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Unused imports in __init__.py
+"tests/*" = ["S101"]      # Allow assert in tests
+
+[lint.isort]
+# Known first-party modules
+known-first-party = ["models", "processing", "evaluate", "app", "config", "utils"]
+
+# Force single line imports
+force-single-line = false
+
+# Lines between sections
+lines-between-types = 1
+lines-after-imports = 2
+
+[format]
+# Use double quotes
+quote-style = "double"
+
+# Indent with spaces
+indent-style = "space"
+
+# Skip magic trailing comma
+skip-magic-trailing-comma = false
+
+# Line ending
+line-ending = "auto"
+
+# Docstring format
+docstring-code-format = true
+

@@ -24,7 +24,7 @@ def reverse_geocode_v2(city, venue, lon, lat):
     try:
         address = json.dumps(location["address"], ensure_ascii=False) if location else None
         category = location.get("category", "") if location else ""
-    except:
+    except (KeyError, TypeError, json.JSONDecodeError):
         address = ""
         category = ""
     return address, category
@@ -33,7 +33,7 @@ def reverse_geocode_v2(city, venue, lon, lat):
 def geocode_extract(city, venue, lon, lat):
     try:
         addr, cate = reverse_geocode_v2(city, venue, lon, lat)
-    except:
+    except (requests.RequestException, json.JSONDecodeError, KeyError, TypeError):
         addr = ""
         cate = "" 
     item_info = {
