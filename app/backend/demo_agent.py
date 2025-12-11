@@ -549,7 +549,21 @@ class DemoAgent:
             context_addr.append(address_parts)
         
         # Create trajectory data structure
-        traj_id = "custom_1"
+        # Generate unique traj_id to avoid overwriting previous custom trajectories
+        if user_id not in self.test_data:
+            self.test_data[user_id] = {}
+        
+        # Find the next available custom trajectory ID
+        existing_custom_ids = [tid for tid in self.test_data[user_id].keys() if tid.startswith("custom_")]
+        if existing_custom_ids:
+            # Extract numbers from existing IDs and find the next one
+            import re
+            numbers = [int(re.search(r'\d+$', tid).group()) for tid in existing_custom_ids if re.search(r'\d+$', tid)]
+            next_num = max(numbers) + 1 if numbers else 1
+        else:
+            next_num = 1
+        traj_id = f"custom_{next_num}"
+        
         traj_data = {
             "context_stays": context_stays,
             "context_pos": context_pos,
@@ -562,8 +576,6 @@ class DemoAgent:
         }
         
         # Store in test_data for prediction
-        if user_id not in self.test_data:
-            self.test_data[user_id] = {}
         self.test_data[user_id][traj_id] = traj_data
         
         # Create ground truth (will be unknown for custom trajectories)

@@ -976,7 +976,10 @@ function clearCustomTrajectory() {
 // Add form point
 function addFormPoint() {
     const container = document.getElementById('form-points-container');
-    const index = customTrajectoryPoints.length;
+    // Use the count of existing form items instead of customTrajectoryPoints.length
+    // because customTrajectoryPoints is empty until preview is called
+    const existingItems = container.querySelectorAll('.form-point-item');
+    const index = existingItems.length;
     
     const pointItem = document.createElement('div');
     pointItem.className = 'form-point-item';
