@@ -48,9 +48,8 @@ class DemoAgent:
     def _load_dataset(self):
         """Load and cache dataset"""
         try:
-            # Use Shanghai_ISP for real data (has correct column names)
-            # Shanghai_filtered.csv uses old column names (lon/lat instead of longitude/latitude)
-            dataset_name = "Shanghai_ISP" if self.city_name == "Shanghai" else self.city_name
+            # Use Shanghai for real data (column mapping is now fixed in data.py)
+            dataset_name = "Shanghai" if self.city_name == "Shanghai" else self.city_name
 
             self.dataset = Dataset(
                 dataset_name=dataset_name,
@@ -197,15 +196,112 @@ class DemoAgent:
 
         return datasets
 
-    def get_sample_trajectories(self, city_name: str, limit: int = 10) -> List[Dict]:
-        """Get sample trajectories for display"""
+    def get_sample_trajectories(self, city_name: str, limit: int = 10, offset: int = 0, 
+                                 min_length: Optional[int] = None, 
+                                 max_length: Optional[int] = None) -> List[Dict]:
+        """Get sample trajectories for display with filtering and pagination"""
         if city_name != self.city_name:
             # Would need to reload dataset for different city
             return []
 
-        if self._sample_trajectories:
-            return self._sample_trajectories[:limit]
-        return []
+        if not self.test_data:
+            return []
+
+        # Collect all trajectories with filtering
+        all_trajectories = []
+        for user_id, user_data in self.test_data.items():
+            for traj_id, traj_data in user_data.items():
+                length = len(traj_data.get("context_stays", []))
+                
+                # Apply length filters
+                if min_length is not None and length < min_length:
+                    continue
+                if max_length is not None and length > max_length:
+                    continue
+                
+                all_trajectories.append({
+                    "user_id": user_id,
+                    "traj_id": traj_id,
+                    "length": length,
+                    "preview": self._get_trajectory_preview(traj_data)
+                })
+        
+        # Apply pagination
+        return all_trajectories[offset:offset + limit]
+
+    def get_user_list(self, city_name: str, search: Optional[str] = None, 
+                      limit: int = 100, offset: int = 0) -> List[Dict]:
+        """Get list of users with trajectory statistics"""
+        if city_name != self.city_name or not self.test_data:
+            return []
+
+        users = []
+        for user_id, user_data in self.test_data.items():
+            # Apply search filter
+            if search and search.lower() not in str(user_id).lower():
+                continue
+            
+            traj_count = len(user_data)
+            if traj_count == 0:
+                continue
+            
+            # Calculate trajectory length statistics
+            lengths = [len(traj_data.get("context_stays", [])) for traj_data in user_data.values()]
+            avg_length = sum(lengths) / len(lengths) if lengths else 0
+            
+            users.append({
+                "user_id": user_id,
+                "trajectory_count": traj_count,
+                "avg_trajectory_length": round(avg_length, 1),
+                "min_length": min(lengths) if lengths else 0,
+                "max_length": max(lengths) if lengths else 0
+            })
+        
+        # Sort by user_id
+        users.sort(key=lambda x: int(x["user_id"]) if x["user_id"].isdigit() else 0)
+        
+        # Apply pagination
+        return users[offset:offset + limit]
+
+    def get_user_trajectories(self, city_name: str, user_id: str) -> List[Dict]:
+        """Get all trajectories for a specific user"""
+        if city_name != self.city_name or not self.test_data:
+            return []
+        
+        if user_id not in self.test_data:
+            return []
+        
+        user_data = self.test_data[user_id]
+        trajectories = []
+        
+        for traj_id, traj_data in user_data.items():
+            context_stays = traj_data.get("context_stays", [])
+            context_pos = traj_data.get("context_pos", [])
+            
+            # Get time range if available
+            time_range = None
+            if context_stays:
+                first_time = context_stays[0][0] if len(context_stays[0]) > 0 else None
+                last_time = context_stays[-1][0] if len(context_stays[-1]) > 0 else None
+                if first_time and last_time:
+                    time_range = {"start": first_time, "end": last_time}
+            
+            trajectories.append({
+                "user_id": user_id,
+                "traj_id": traj_id,
+                "length": len(context_stays),
+                "time_range": time_range,
+                "preview": self._get_trajectory_preview(traj_data),
+                "start_location": {
+                    "lat": context_pos[0][1] if context_pos and len(context_pos) > 0 else None,
+                    "lng": context_pos[0][0] if context_pos and len(context_pos) > 0 else None
+                } if context_pos else None
+            })
+        
+        # Sort by trajectory ID
+        trajectories.sort(key=lambda x: int(x["traj_id"]) if x["traj_id"].isdigit() else 0)
+        
+        return trajectories
 
     def get_trajectory_detail(self, city_name: str, user_id: str, traj_id: str) -> Dict:
         """Get detailed trajectory information"""
@@ -276,10 +372,16 @@ class DemoAgent:
         """
         # Select random trajectory if not specified
         if user_id is None or user_id not in self.test_data:
-            user_id = list(self.test_data.keys())[0]
+            if self.test_data:
+                user_id = list(self.test_data.keys())[0]
+            else:
+                raise ValueError("No trajectory data available")
 
         if traj_id is None or traj_id not in self.test_data[user_id]:
-            traj_id = list(self.test_data[user_id].keys())[0]
+            if self.test_data[user_id]:
+                traj_id = list(self.test_data[user_id].keys())[0]
+            else:
+                raise ValueError(f"No trajectories found for user {user_id}")
 
         # Get trajectory data
         traj_data = self.test_data[user_id][traj_id]
@@ -390,3 +492,116 @@ class DemoAgent:
         }
 
         return result
+
+    def create_custom_trajectory(self, user_id: str, trajectory_points: List[Dict]) -> Dict:
+        """
+        Create a custom trajectory from user input
+        
+        Args:
+            user_id: User ID for the custom trajectory
+            trajectory_points: List of trajectory points with format:
+                [{
+                    "timestamp": str,
+                    "latitude": float,
+                    "longitude": float,
+                    "category": str (optional),
+                    "venue_id": int (optional),
+                    "address": str (optional)
+                }, ...]
+        
+        Returns:
+            Dictionary with trajectory data in internal format
+        """
+        if not trajectory_points or len(trajectory_points) < 1:
+            raise ValueError("Trajectory must contain at least one point")
+        
+        # Convert to internal format
+        # Format: [hour, weekday, category, venue_id, admin, subdistrict, poi, street]
+        context_stays = []
+        context_pos = []
+        context_addr = []
+        
+        for point in trajectory_points:
+            # Parse timestamp to extract hour and weekday
+            from datetime import datetime
+            try:
+                dt = datetime.fromisoformat(point["timestamp"].replace('Z', '+00:00'))
+                hour = dt.hour
+                weekday = dt.strftime("%A")
+            except:
+                # Fallback if timestamp parsing fails
+                hour = 12
+                weekday = "Monday"
+            
+            category = point.get("category", "Unknown")
+            venue_id = point.get("venue_id", 0)
+            
+            # Parse address if available
+            address_parts = ["", "", "", ""]
+            if point.get("address"):
+                parts = point["address"].split(",")
+                address_parts = [p.strip() for p in parts[:4]]
+                while len(address_parts) < 4:
+                    address_parts.append("")
+            
+            context_stays.append([hour, weekday, category, venue_id] + address_parts)
+            context_pos.append([point["longitude"], point["latitude"]])
+            context_addr.append(address_parts)
+        
+        # Create trajectory data structure
+        traj_id = "custom_1"
+        traj_data = {
+            "context_stays": context_stays,
+            "context_pos": context_pos,
+            "context_addr": context_addr,
+            "target_stay": [context_stays[-1][0], context_stays[-1][1], "<next_place_id>", "<next_place_address>"],
+            "historical_stays": context_stays[:-1] if len(context_stays) > 1 else [],
+            "historical_pos": context_pos[:-1] if len(context_pos) > 1 else [],
+            "historical_addr": context_addr[:-1] if len(context_addr) > 1 else [],
+            "historical_stays_long": context_stays[:-1] if len(context_stays) > 1 else []
+        }
+        
+        # Store in test_data for prediction
+        if user_id not in self.test_data:
+            self.test_data[user_id] = {}
+        self.test_data[user_id][traj_id] = traj_data
+        
+        # Create ground truth (will be unknown for custom trajectories)
+        if user_id not in self.ground_data:
+            self.ground_data[user_id] = {}
+        self.ground_data[user_id][traj_id] = {
+            "ground_stay": None,
+            "ground_pos": [context_pos[-1][0], context_pos[-1][1]],
+            "ground_addr": ", ".join([p for p in address_parts if p])
+        }
+        
+        # Format trajectory for visualization
+        formatted_points = []
+        for i, point in enumerate(trajectory_points):
+            formatted_points.append({
+                "timestamp": point["timestamp"],
+                "latitude": point["latitude"],
+                "longitude": point["longitude"],
+                "category": point.get("category", "Unknown"),
+                "venue_id": point.get("venue_id"),
+                "index": i
+            })
+        
+        return {
+            "traj_id": traj_id,
+            "trajectory": {
+                "user_id": user_id,
+                "traj_id": traj_id,
+                "trajectory_points": formatted_points,
+                "ground_truth": {
+                    "venue_id": None,
+                    "latitude": trajectory_points[-1]["latitude"],
+                    "longitude": trajectory_points[-1]["longitude"],
+                    "address": trajectory_points[-1].get("address", "Unknown")
+                },
+                "metadata": {
+                    "total_points": len(formatted_points),
+                    "is_custom": True
+                }
+            }
+        }

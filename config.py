@@ -19,6 +19,9 @@ except Exception as e:
 PROXY = os.environ.get("PROXY", "")  # Default: no proxy
 if not PROXY:
     PROXY = None  # Set to None if empty string
+elif PROXY and not PROXY.startswith(("http://", "https://", "socks5://")):
+    # If PROXY is just IP:PORT, add http:// prefix
+    PROXY = f"http://{PROXY}"
 
 # EXP_CITIES = ['Tokyo', 'Nairobi', 'NewYork', 'Sydney', 'CapeTown', 'Paris', 'Beijing', 'Mumbai', 'SanFrancisco', 'London', 'SaoPaulo', 'Moscow']
 # EXP_CITIES = ["Beijing"] # use it for quickly start

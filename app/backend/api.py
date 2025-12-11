@@ -73,6 +73,17 @@ class TrajectoryPoint(BaseModel):
     address: Optional[str] = None
 
 
+class CustomTrajectoryRequest(BaseModel):
+    """Request model for custom trajectory"""
+    user_id: str = "custom_user"
+    trajectory_points: List[TrajectoryPoint]
+
+
+class TrajectoryValidationRequest(BaseModel):
+    """Request model for trajectory validation"""
+    trajectory_points: List[TrajectoryPoint]
+
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize demo agent on startup"""
@@ -142,8 +153,9 @@ async def get_datasets():
 
 
 @app.get("/api/trajectories/{city_name}")
-async def get_trajectories(city_name: str, limit: int = 10):
-    """Get sample trajectories for a city"""
+async def get_trajectories(city_name: str, limit: int = 10, offset: int = 0,
+                           min_length: Optional[int] = None, max_length: Optional[int] = None):
+    """Get sample trajectories for a city with filtering and pagination"""
     if demo_agent is None:
         raise HTTPException(
             status_code=503,
@@ -151,8 +163,11 @@ async def get_trajectories(city_name: str, limit: int = 10):
         )
 
     try:
-        logger.info(f"Fetching trajectories for {city_name}, limit={limit}")
-        trajectories = demo_agent.get_sample_trajectories(city_name, limit)
+        logger.info(f"Fetching trajectories for {city_name}, limit={limit}, offset={offset}")
+        trajectories = demo_agent.get_sample_trajectories(
+            city_name, limit=limit, offset=offset,
+            min_length=min_length, max_length=max_length
+        )
         logger.info(f"Found {len(trajectories)} trajectories")
         return {
             "success": True,
@@ -170,6 +185,74 @@ async def get_trajectories(city_name: str, limit: int = 10):
                 "error": str(e),
                 "error_type": type(e).__name__,
                 "message": f"Failed to fetch trajectories for {city_name}. Check server logs for details."
+            }
+        )
+
+
+@app.get("/api/users/{city_name}")
+async def get_users(city_name: str, search: Optional[str] = None,
+                    limit: int = 100, offset: int = 0):
+    """Get list of users with trajectory statistics"""
+    if demo_agent is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Demo agent not initialized. Please check server logs."
+        )
+
+    try:
+        logger.info(f"Fetching users for {city_name}, search={search}, limit={limit}")
+        users = demo_agent.get_user_list(city_name, search=search, limit=limit, offset=offset)
+        logger.info(f"Found {len(users)} users")
+        return {
+            "success": True,
+            "city": city_name,
+            "count": len(users),
+            "users": users
+        }
+    except Exception as e:
+        logger.error(f"Failed to get users: {e}")
+        logger.error(traceback.format_exc())
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "message": f"Failed to fetch users for {city_name}. Check server logs for details."
+            }
+        )
+
+
+@app.get("/api/user/{city_name}/{user_id}/trajectories")
+async def get_user_trajectories(city_name: str, user_id: str):
+    """Get all trajectories for a specific user"""
+    if demo_agent is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Demo agent not initialized. Please check server logs."
+        )
+
+    try:
+        logger.info(f"Fetching trajectories for user {user_id} in {city_name}")
+        trajectories = demo_agent.get_user_trajectories(city_name, user_id)
+        logger.info(f"Found {len(trajectories)} trajectories for user {user_id}")
+        return {
+            "success": True,
+            "city": city_name,
+            "user_id": user_id,
+            "count": len(trajectories),
+            "trajectories": trajectories
+        }
+    except Exception as e:
+        logger.error(f"Failed to get user trajectories: {e}")
+        logger.error(traceback.format_exc())
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "message": f"Failed to fetch trajectories for user {user_id}. Check server logs for details."
             }
         )
 
@@ -290,6 +373,118 @@ async def get_available_models():
             "llmmob": "LLM-Mob Baseline"
         }
     }
+
+
+@app.post("/api/trajectory/validate")
+async def validate_trajectory(request: TrajectoryValidationRequest):
+    """Validate trajectory data format"""
+    try:
+        errors = []
+        warnings = []
+        
+        if not request.trajectory_points:
+            errors.append("Trajectory must contain at least one point")
+            return {
+                "success": False,
+                "valid": False,
+                "errors": errors,
+                "warnings": warnings
+            }
+        
+        if len(request.trajectory_points) < 2:
+            warnings.append("Trajectory should have at least 2 points for meaningful prediction")
+        
+        # Validate each point
+        for i, point in enumerate(request.trajectory_points):
+            if not (-90 <= point.latitude <= 90):
+                errors.append(f"Point {i+1}: Latitude must be between -90 and 90")
+            if not (-180 <= point.longitude <= 180):
+                errors.append(f"Point {i+1}: Longitude must be between -180 and 180")
+            if not point.timestamp:
+                errors.append(f"Point {i+1}: Timestamp is required")
+            if not point.category:
+                warnings.append(f"Point {i+1}: Category is recommended for better prediction")
+        
+        # Check time ordering
+        try:
+            from datetime import datetime
+            timestamps = []
+            for point in request.trajectory_points:
+                try:
+                    # Try to parse timestamp
+                    dt = datetime.fromisoformat(point.timestamp.replace('Z', '+00:00'))
+                    timestamps.append(dt)
+                except:
+                    warnings.append(f"Point timestamp format may be invalid: {point.timestamp}")
+            
+            if len(timestamps) > 1:
+                for i in range(1, len(timestamps)):
+                    if timestamps[i] < timestamps[i-1]:
+                        warnings.append("Trajectory points are not in chronological order")
+        except Exception as e:
+            warnings.append(f"Could not validate time ordering: {e}")
+        
+        valid = len(errors) == 0
+        
+        return {
+            "success": True,
+            "valid": valid,
+            "errors": errors,
+            "warnings": warnings,
+            "point_count": len(request.trajectory_points)
+        }
+    except Exception as e:
+        logger.error(f"Trajectory validation failed: {e}")
+        logger.error(traceback.format_exc())
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "valid": False,
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+        )
+
+
+@app.post("/api/trajectory/custom")
+async def create_custom_trajectory(request: CustomTrajectoryRequest):
+    """Create a custom trajectory for prediction"""
+    if demo_agent is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Demo agent not initialized. Please check server logs."
+        )
+
+    try:
+        logger.info(f"Creating custom trajectory for user {request.user_id} with {len(request.trajectory_points)} points")
+        
+        # Convert custom trajectory to internal format
+        custom_traj = demo_agent.create_custom_trajectory(
+            user_id=request.user_id,
+            trajectory_points=request.trajectory_points
+        )
+        
+        logger.info("Custom trajectory created successfully")
+        return {
+            "success": True,
+            "user_id": request.user_id,
+            "traj_id": custom_traj["traj_id"],
+            "trajectory": custom_traj["trajectory"],
+            "message": "Custom trajectory created successfully"
+        }
+    except Exception as e:
+        logger.error(f"Failed to create custom trajectory: {e}")
+        logger.error(traceback.format_exc())
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "message": "Failed to create custom trajectory. Check server logs for details."
+            }
+        )
 
 
 @app.get("/api/example")

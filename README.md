@@ -83,12 +83,40 @@ export nominatim_deploy_server_address="127.0.0.1:8080"
 We define the list of supported models in `models/llm_api.py`. You can add new models or platforms by modifying this file.
 
 ## Installation
+
+### Using uv (Recommended)
+
+[uv](https://github.com/astral-sh/uv) is a fast Python package installer and resolver written in Rust.
+
+```bash
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+git clone https://github.com/tsinghua-fib-lab/AgentMove.git
+cd AgentMove
+
+# Create virtual environment with Python 3.10
+uv venv
+
+# Activate virtual environment
+source .venv/bin/activate  # Linux/Mac
+# or .venv\Scripts\activate  # Windows
+
+# Install project dependencies
+uv pip install -e .
+
+# Install Web Demo dependencies (optional, for running the web demo)
+uv pip install -e ".[app]"
+```
+
+### Alternative: Using conda + pip
+
 ```bash
 git clone https://github.com/tsinghua-fib-lab/AgentMove.git
-
 cd AgentMove
 
 conda create -n agentmove python=3.10
+conda activate agentmove
 pip install -r requirements.txt
 ```
 
@@ -173,8 +201,11 @@ We provide an interactive web-based demo for visualizing predictions and explori
 ### Quick Start
 
 ```bash
-# Install demo dependencies
-pip install -r app/requirements.txt
+# If using uv, install demo dependencies (if not already installed)
+# uv pip install -e ".[app]"
+
+# Or if using pip
+# pip install -r app/requirements.txt
 
 # Start the demo server
 bash app/start_demo.sh

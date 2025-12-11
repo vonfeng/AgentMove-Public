@@ -62,7 +62,12 @@ done
 if [ ${#missing_packages[@]} -gt 0 ]; then
     echo "Missing packages: ${missing_packages[*]}"
     echo "Installing missing packages..."
-    pip install "${missing_packages[@]}"
+    # Try uv first, fallback to pip
+    if command -v uv &> /dev/null; then
+        uv pip install "${missing_packages[@]}"
+    else
+        pip install "${missing_packages[@]}"
+    fi
 fi
 
 # Check environment variables (from .env or system)
@@ -104,7 +109,7 @@ fi
 
 # Configuration
 HOST=${DEMO_HOST:-0.0.0.0}
-PORT=${DEMO_PORT:-8000}
+PORT=${DEMO_PORT:-8010}
 
 echo ""
 echo "=========================================="

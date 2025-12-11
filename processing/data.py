@@ -276,6 +276,8 @@ class Dataset:
                 'user': 'user_id',
                 'time': 'timezone_offset',
                 'venue_cat_name': 'venue_category_name',
+                'lon': 'longitude',
+                'lat': 'latitude',
             }
             data.rename(columns=rename_dict, inplace=True)
 
@@ -492,11 +494,13 @@ class Dataset:
             def _group_by_time_window(data):
                 # Sort by timestamp
                 data = data.sort_values('datetime')
+                if len(data) == 0:
+                    return data
                 # Start time for the first group
                 start_time = data.iloc[0]['datetime']
-                # Initialize trajectory ID
-
-                trajectory_id = self.data['traj_id'].max()
+                # Initialize trajectory ID - start from 0 for each user group
+                trajectory_id = 0
+                data.iloc[0, data.columns.get_loc('traj_id')] = trajectory_id
                 time_window = pd.Timedelta(hours=self.hour_bins)
                 for i in range(1, len(data)):
                     # If the current timestamp is outside the 72-hour window, increment the trajectory ID
@@ -508,7 +512,12 @@ class Dataset:
                 return data
 
             if self.dataset_name in ["Shanghai"]:
-                pass
+                # For Shanghai ISP data, each row represents a trajectory point
+                # We need to create traj_id by grouping consecutive check-ins within a time window
+                # Initialize traj_id column
+                self.data['traj_id'] = 0
+                # Group by user and create trajectories based on time windows
+                self.data = self.data.groupby('user_id').apply(_group_by_time_window).reset_index(drop=True)
             else:
                 # Applying the function to group by ID and then by time window
                 self.data['traj_id'] = 0

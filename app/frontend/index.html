@@ -94,21 +94,150 @@
                 <div class="panel-section">
                     <h3>📍 轨迹选择</h3>
 
-                    <div class="form-group">
-                        <label for="trajectory-select">选择轨迹</label>
-                        <select id="trajectory-select" class="form-control">
-                            <option value="">加载中...</option>
-                        </select>
-                        <small class="form-hint">或者选择随机轨迹进行预测</small>
+                    <!-- Tab Navigation -->
+                    <div class="tab-nav">
+                        <button class="tab-btn active" data-tab="browse">浏览数据集</button>
+                        <button class="tab-btn" data-tab="create">创建轨迹</button>
                     </div>
 
-                    <div class="button-group">
-                        <button id="load-trajectory-btn" class="btn btn-secondary">
-                            查看轨迹
-                        </button>
-                        <button id="random-trajectory-btn" class="btn btn-secondary">
-                            随机选择
-                        </button>
+                    <!-- Browse Dataset Tab -->
+                    <div id="browse-tab" class="tab-content active">
+                        <div class="form-group">
+                            <label for="user-search">搜索用户ID</label>
+                            <input type="text" id="user-search" class="form-control" placeholder="输入用户ID搜索...">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="trajectory-filter-min">轨迹长度筛选</label>
+                            <div class="filter-row">
+                                <input type="number" id="trajectory-filter-min" class="form-control" placeholder="最小" min="1" style="width: 45%;">
+                                <span style="margin: 0 5px;">-</span>
+                                <input type="number" id="trajectory-filter-max" class="form-control" placeholder="最大" min="1" style="width: 45%;">
+                            </div>
+                        </div>
+
+                        <div class="button-group">
+                            <button id="load-users-btn" class="btn btn-secondary">
+                                加载用户列表
+                            </button>
+                            <button id="random-trajectory-btn" class="btn btn-secondary">
+                                随机选择
+                            </button>
+                        </div>
+
+                        <!-- User List -->
+                        <div id="user-list-container" class="user-list-container" style="display: none;">
+                            <h4>用户列表</h4>
+                            <div id="user-list" class="user-list"></div>
+                        </div>
+
+                        <!-- Trajectory List (shown when user is selected) -->
+                        <div id="trajectory-list-container" class="trajectory-list-container" style="display: none;">
+                            <h4>轨迹列表 <span id="selected-user-name"></span></h4>
+                            <div id="trajectory-list" class="trajectory-list"></div>
+                        </div>
+
+                        <!-- Legacy dropdown (kept for backward compatibility) -->
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label for="trajectory-select">快速选择</label>
+                            <select id="trajectory-select" class="form-control">
+                                <option value="">加载中...</option>
+                            </select>
+                        </div>
+
+                        <div class="button-group">
+                            <button id="load-trajectory-btn" class="btn btn-secondary">
+                                查看轨迹
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Create Trajectory Tab -->
+                    <div id="create-tab" class="tab-content">
+                        <!-- Input Mode Selection -->
+                        <div class="form-group">
+                            <label>输入方式</label>
+                            <div class="button-group">
+                                <button class="btn btn-secondary input-mode-btn active" data-mode="map">地图点击</button>
+                                <button class="btn btn-secondary input-mode-btn" data-mode="form">表单输入</button>
+                                <button class="btn btn-secondary input-mode-btn" data-mode="json">JSON导入</button>
+                            </div>
+                        </div>
+
+                        <!-- Map Click Mode -->
+                        <div id="input-mode-map" class="input-mode-content active">
+                            <div class="form-hint">
+                                <p>💡 点击地图添加轨迹点。点击已添加的点可以编辑或删除。</p>
+                            </div>
+                            <div class="button-group">
+                                <button id="clear-custom-trajectory-btn" class="btn btn-secondary">
+                                    清除所有点
+                                </button>
+                            </div>
+                            <div id="custom-points-list" class="custom-points-list"></div>
+                        </div>
+
+                        <!-- Form Input Mode -->
+                        <div id="input-mode-form" class="input-mode-content">
+                            <div class="form-group">
+                                <button id="add-point-form-btn" class="btn btn-secondary">
+                                    + 添加轨迹点
+                                </button>
+                            </div>
+                            <div id="form-points-container" class="form-points-container"></div>
+                        </div>
+
+                        <!-- JSON Import Mode -->
+                        <div id="input-mode-json" class="input-mode-content">
+                            <div class="form-group">
+                                <label for="json-input">粘贴JSON格式轨迹数据</label>
+                                <textarea id="json-input" class="form-control" rows="10" placeholder='{"user_id": "custom_user", "trajectory_points": [{"timestamp": "2024-11-25T08:30:00", "latitude": 31.2304, "longitude": 121.4737, "category": "Residence"}, ...]}'></textarea>
+                                <small class="form-hint">JSON格式示例已显示在下方</small>
+                            </div>
+                            <div class="form-group">
+                                <button id="validate-json-btn" class="btn btn-secondary">
+                                    验证JSON
+                                </button>
+                                <button id="import-json-btn" class="btn btn-primary">
+                                    导入轨迹
+                                </button>
+                            </div>
+                            <div id="json-validation-result" class="validation-result"></div>
+                            <details class="json-example">
+                                <summary>查看JSON格式示例</summary>
+                                <pre id="json-example-code">{
+  "user_id": "custom_user_1",
+  "trajectory_points": [
+    {
+      "timestamp": "2024-11-25T08:30:00",
+      "latitude": 31.2304,
+      "longitude": 121.4737,
+      "category": "Residence",
+      "venue_id": 1,
+      "address": "Pudong, Lujiazui, Home, Century Avenue"
+    },
+    {
+      "timestamp": "2024-11-25T09:15:00",
+      "latitude": 31.2397,
+      "longitude": 121.4990,
+      "category": "Office",
+      "venue_id": 2,
+      "address": "Pudong, Lujiazui, Office Tower, Yincheng Road"
+    }
+  ]
+}</pre>
+                            </details>
+                        </div>
+
+                        <!-- Custom Trajectory Actions -->
+                        <div class="button-group" style="margin-top: 15px;">
+                            <button id="preview-custom-trajectory-btn" class="btn btn-secondary">
+                                预览轨迹
+                            </button>
+                            <button id="save-custom-trajectory-btn" class="btn btn-primary">
+                                保存并使用
+                            </button>
+                        </div>
                     </div>
                 </div>
 

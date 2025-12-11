@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["processing", "models", "evaluate", "app", "baselines"]
+
+[project]
+name = "agentmove"
+version = "0.1.0"
+description = "A Large Language Model based Agentic Framework for Zero-shot Next Location Prediction"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "json-repair==0.25.3",
+    "jsmin==3.0.1",
+    "openai==1.25.1",
+    "tqdm==4.65.2",
+    "pandas==2.1.4",
+    "tenacity==8.5.0",
+    "scikit-learn==1.5.1",
+    "numpy==1.26.4",
+    "httpx==0.27.0",
+    "geopy==2.4.1",
+    "networkx==3.3",
+    "token-count==0.2.1",
+    "openxlab==0.0.33",
+    "gdown==5.2.0",
+    "bypy==1.8.5",
+    "huggingface-hub==0.25.1",
+    "torch==2.1.0",
+    "python-dotenv==1.0.0",
+]
+
+[project.optional-dependencies]
+app = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "httpx>=0.27.0",
+    "python-multipart>=0.0.6",
+    "pydantic>=2.5.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/tsinghua-fib-lab/AgentMove"
+Repository = "https://github.com/tsinghua-fib-lab/AgentMove"
+
